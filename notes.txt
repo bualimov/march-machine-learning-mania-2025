@@ -1,0 +1,28 @@
+Also to do:
+- play with datatbase, have it build a model to test
+- look at how model did based on 2024 predictions
+
+- big dataset to train the model, portion to test it (Machine learning)
+    - (will it be trained on the reg season, tourney in test?. like split in half?)
+    - or will part of tourney be bart of test
+- it will determine which values are more worthy for prediction (weight)
+    - ex. point diff over the year is more important to deternmine performance
+- use data from prev years, use data from tourney to determine how well model is actually behaving
+- how well is model gonna predict how well each team does in the tournament
+    - this will be used to test how good our model is, were we able to predict the winners accurately
+- how good is relative team performance, like UConn has been good for years, vs. random teams that just show up
+- 70% of the time, the favorites win
+- test 1 v 16, 2 v15, in my head the numbers should go down as you get closer
+
+Variables to check:
+- check to see if weight needed for players that have been w/ team longer
+- try to find point diff?
+- diff buckets
+    - how does team do statistically
+    - strength of schedule/conference
+    - coach success rates
+    - AP + other rankings (net), how important are those
+        - 192 types of rankings, do they play a part
+    - tournament seeding, does that play a role
+
+

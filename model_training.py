@@ -12,8 +12,9 @@ from sklearn.metrics import brier_score_loss, log_loss, accuracy_score, roc_auc_
 from sklearn.pipeline import Pipeline
 import joblib
 import os
+import pickle
 
-def train_model(X, y, model_type='gradient_boosting', save_model=True, model_dir='models', time_weight=True):
+def train_model(X, y, model_type='logistic', save_model=True, model_dir='models', time_weight=True):
     """
     Train a machine learning model on the provided data.
     
@@ -81,72 +82,51 @@ def train_model(X, y, model_type='gradient_boosting', save_model=True, model_dir
     
     # Create a pipeline with imputation, scaling, and the model
     if model_type == 'logistic':
+        # Create a simple logistic regression model
         pipeline = Pipeline([
             ('imputer', SimpleImputer(strategy='mean')),
             ('scaler', StandardScaler()),
-            ('model', LogisticRegression(random_state=42, max_iter=1000))
+            ('model', LogisticRegression(random_state=42, max_iter=1000, C=1.0))
         ])
-        
-        # Define hyperparameters to search
-        param_grid = {
-            'model__C': [0.001, 0.01, 0.1, 1, 10, 100],
-            'model__penalty': ['l2'],  # l1 not supported with some solvers
-            'model__solver': ['liblinear', 'saga']
-        }
         
     elif model_type == 'random_forest':
+        # Create a simple random forest model
         pipeline = Pipeline([
             ('imputer', SimpleImputer(strategy='mean')),
-            ('model', RandomForestClassifier(random_state=42))
+            ('model', RandomForestClassifier(
+                n_estimators=100,
+                max_depth=10,
+                min_samples_split=5,
+                min_samples_leaf=2,
+                random_state=42
+            ))
         ])
-        
-        # Define hyperparameters to search
-        param_grid = {
-            'model__n_estimators': [100, 200, 300],
-            'model__max_depth': [None, 5, 10, 15],
-            'model__min_samples_split': [2, 5, 10],
-            'model__min_samples_leaf': [1, 2, 4]
-        }
         
     elif model_type == 'gradient_boosting':
+        # Create a simple gradient boosting model
         pipeline = Pipeline([
             ('imputer', SimpleImputer(strategy='mean')),
-            ('model', GradientBoostingClassifier(random_state=42))
+            ('model', GradientBoostingClassifier(
+                n_estimators=100,
+                learning_rate=0.1,
+                max_depth=5,
+                min_samples_split=5,
+                subsample=0.8,
+                random_state=42
+            ))
         ])
-        
-        # Define hyperparameters to search
-        param_grid = {
-            'model__n_estimators': [100, 200, 300],
-            'model__learning_rate': [0.01, 0.05, 0.1],
-            'model__max_depth': [3, 5, 7],
-            'model__min_samples_split': [2, 5, 10],
-            'model__subsample': [0.8, 0.9, 1.0]
-        }
     
     else:
         raise ValueError(f"Unknown model type: {model_type}")
     
-    # Use GridSearchCV to find the best hyperparameters
-    grid_search = GridSearchCV(
-        pipeline,
-        param_grid,
-        cv=5,
-        scoring='neg_log_loss',
-        n_jobs=-1,
-        verbose=1
-    )
-    
     # Fit the model with sample weights if available
-    grid_search.fit(X_train_numeric, y_train, **({'sample_weight': sample_weights_train} if sample_weights_train is not None else {}))
-    
-    # Get the best model
-    best_model = grid_search.best_estimator_
-    
-    # Print best hyperparameters
-    print(f"Best hyperparameters: {grid_search.best_params_}")
+    if sample_weights_train is not None:
+        pipeline.fit(X_train_numeric, y_train, model__sample_weight=sample_weights_train)
+    else:
+        pipeline.fit(X_train_numeric, y_train)
     
     # Evaluate on validation set
-    y_val_pred_proba = best_model.predict_proba(X_val_numeric)[:, 1]
+    y_val_pred_proba = pipeline.predict_proba(X_val_numeric)[:, 1]
     val_log_loss = log_loss(y_val, y_val_pred_proba)
     val_brier_score = brier_score_loss(y_val, y_val_pred_proba)
     val_accuracy = accuracy_score(y_val, y_val_pred_proba > 0.5)
@@ -163,11 +143,12 @@ def train_model(X, y, model_type='gradient_boosting', save_model=True, model_dir
         
         # Save the model and feature names
         model_info = {
-            'model': best_model,
+            'model': pipeline,
             'feature_names': list(X_train_numeric.columns)
         }
         
-        joblib.dump(model_info, model_path)
+        with open(model_path, 'wb') as f:
+            pickle.dump(model_info, f)
         print(f"Model saved to {model_path}")
     
     return model_info
@@ -258,4 +239,33 @@ def load_model(model_path):
     else:
         # Old format, just the model
         print("Loaded model (old format without feature names)")
-        return {'model': model_info, 'feature_names': None} 
+        return {'model': model_info, 'feature_names': None}
+
+def save_model(model_info, model_path):
+    """
+    Save the model and feature names to a file.
+    
+    Parameters:
+    -----------
+    model_info : dict
+        Dictionary containing the model and feature names
+    model_path : str
+        Path to save the model
+    """
+    # Create directory if it doesn't exist
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    
+    # Save the model
+    with open(model_path, 'wb') as f:
+        pickle.dump(model_info, f)
+    
+    print(f"Model saved to {model_path}")
+    
+    # Print model info
+    if isinstance(model_info, dict):
+        if 'model' in model_info:
+            print(f"Model type: {type(model_info['model']).__name__}")
+        if 'feature_names' in model_info:
+            print(f"Number of features: {len(model_info['feature_names'])}")
+    else:
+        print(f"Model type: {type(model_info).__name__}") 

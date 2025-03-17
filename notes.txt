@@ -25,4 +25,272 @@ Variables to check:
         - 192 types of rankings, do they play a part
     - tournament seeding, does that play a role
 
+next prompt:
+can you implement these improvements in accuracy for me? take into account all of the variables and thoughts i had in the notes.txt file. like taking into account rankings, strength of scheul, player experince, coach success rates, sats of the teams, conference strength, stuff like this. take all of this into account. how good is realtive team performance (uconn consistently good, random schools like oakland that had a good run) stuff like this please look at all of this in detail and do everything you can to increase the accuracy.
 
+longer prompt all included: also, this was my output for running it last time:Library
+Movies
+Music
+OneDrive - University of Pittsburgh
+Pictures
+Public
+cs0445-lab3-bualimov
+cs447
+dev
+fitness-app
+bualimov@Bakhtiyors-MacBook-Pro ~ % cd dev
+bualimov@Bakhtiyors-MacBook-Pro dev % cd march-machine-learning-mania-2025 
+bualimov@Bakhtiyors-MacBook-Pro march-machine-learning-mania-2025 % git status
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   notes.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
+bualimov@Bakhtiyors-MacBook-Pro march-machine-learning-mania-2025 % clear
+
+bualimov@Bakhtiyors-MacBook-Pro march-machine-learning-mania-2025 % python3 main.py
+Starting March Machine Learning Mania 2025 prediction process...
+
+Step 1: Loading data...
+Loaded 11 datasets for M basketball
+Loaded 10 datasets for W basketball
+Loaded 3 common datasets
+
+Step 2: Preparing features and training data...
+Processing men's data...
+  Calculating stats for 2010 season...
+  Calculating stats for 2011 season...
+  Calculating stats for 2012 season...
+  Calculating stats for 2013 season...
+  Calculating stats for 2014 season...
+  Calculating stats for 2015 season...
+  Calculating stats for 2016 season...
+  Calculating stats for 2017 season...
+  Calculating stats for 2018 season...
+  Calculating stats for 2019 season...
+  Calculating stats for 2020 season...
+  Calculating stats for 2021 season...
+  Calculating stats for 2022 season...
+  Calculating stats for 2023 season...
+  Calculating stats for 2024 season...
+Processing women's data...
+  Calculating stats for 2010 season...
+  Calculating stats for 2011 season...
+  Calculating stats for 2012 season...
+  Calculating stats for 2013 season...
+  Calculating stats for 2014 season...
+  Calculating stats for 2015 season...
+  Calculating stats for 2016 season...
+  Calculating stats for 2017 season...
+  Calculating stats for 2018 season...
+  Calculating stats for 2019 season...
+  Calculating stats for 2020 season...
+  Calculating stats for 2021 season...
+  Calculating stats for 2022 season...
+  Calculating stats for 2023 season...
+  Calculating stats for 2024 season...
+
+Step 3: Training models...
+Loading existing men's model from models/mens_model.pkl
+Loaded model with 24 features
+Evaluating men's model...
+Brier Score: 0.0874
+Log Loss: 0.3230
+Accuracy: 0.9141
+AUC: 0.9453
+Men's model evaluation score: 0.0874
+Loading existing women's model from models/womens_model.pkl
+Loaded model with 23 features
+Evaluating women's model...
+Brier Score: 0.1010
+Log Loss: 0.3671
+Accuracy: 0.9286
+AUC: 0.9758
+Women's model evaluation score: 0.1010
+
+Step 4: Generating predictions for all required seasons...
+
+Generating predictions for season 2021...
+Generating men's predictions for 2021...
+Generating predictions for M basketball, season 2021
+Found 357 active teams for M basketball in season 2021
+No stats found for season 2021, using season 2010.0 instead
+Warning: Prediction data contains 301796 NaN values
+Columns with NaN values:
+ConfAvgWinPercentageDiff        58996
+ConfAvgPointDifferentialDiff    58996
+Team1Seed                       61268
+Team2Seed                       61268
+SeedDiff                        61268
+dtype: int64
+Using 24 features from the model
+Generated 63546 predictions for season 2021
+Generating women's predictions for 2021...
+Generating predictions for W basketball, season 2021
+Found 378 active teams for W basketball in season 2021
+No stats found for season 2021, using season 2010.0 instead
+Warning: Prediction data contains 384699 NaN values
+Columns with NaN values:
+ConfAvgWinPercentageDiff        58996
+ConfAvgPointDifferentialDiff    58996
+RankDiff                        58996
+Team1Seed                       69237
+Team2Seed                       69237
+SeedDiff                        69237
+dtype: int64
+Using 23 features from the model
+Generated 71253 predictions for season 2021
+
+Generating predictions for season 2022...
+Generating men's predictions for 2022...
+Generating predictions for M basketball, season 2022
+Found 358 active teams for M basketball in season 2022
+No stats found for season 2022, using season 2010.0 instead
+Warning: Prediction data contains 302867 NaN values
+Columns with NaN values:
+ConfAvgWinPercentageDiff        58996
+ConfAvgPointDifferentialDiff    58996
+Team1Seed                       61625
+Team2Seed                       61625
+SeedDiff                        61625
+dtype: int64
+Using 24 features from the model
+Generated 63903 predictions for season 2022
+Generating women's predictions for 2022...
+Generating predictions for W basketball, season 2022
+Found 378 active teams for W basketball in season 2022
+No stats found for season 2022, using season 2010.0 instead
+Warning: Prediction data contains 383913 NaN values
+Columns with NaN values:
+ConfAvgWinPercentageDiff        58996
+ConfAvgPointDifferentialDiff    58996
+RankDiff                        58996
+Team1Seed                       68975
+Team2Seed                       68975
+SeedDiff                        68975
+dtype: int64
+Using 23 features from the model
+Generated 71253 predictions for season 2022
+
+Generating predictions for season 2023...
+Generating men's predictions for 2023...
+Generating predictions for M basketball, season 2023
+Found 363 active teams for M basketball in season 2023
+No stats found for season 2023, using season 2010.0 instead
+Warning: Prediction data contains 308267 NaN values
+Columns with NaN values:
+ConfAvgWinPercentageDiff        58996
+ConfAvgPointDifferentialDiff    58996
+Team1Seed                       63425
+Team2Seed                       63425
+SeedDiff                        63425
+dtype: int64
+Using 24 features from the model
+Generated 65703 predictions for season 2023
+Generating women's predictions for 2023...
+Generating predictions for W basketball, season 2023
+Found 378 active teams for W basketball in season 2023
+No stats found for season 2023, using season 2010.0 instead
+Warning: Prediction data contains 383913 NaN values
+Columns with NaN values:
+ConfAvgWinPercentageDiff        58996
+ConfAvgPointDifferentialDiff    58996
+RankDiff                        58996
+Team1Seed                       68975
+Team2Seed                       68975
+SeedDiff                        68975
+dtype: int64
+Using 23 features from the model
+Generated 71253 predictions for season 2023
+
+Generating predictions for season 2024...
+Generating men's predictions for 2024...
+Generating predictions for M basketball, season 2024
+Found 362 active teams for M basketball in season 2024
+No stats found for season 2024, using season 2010.0 instead
+Warning: Prediction data contains 305811 NaN values
+Columns with NaN values:
+ConfAvgWinPercentageDiff        58311
+ConfAvgPointDifferentialDiff    58311
+Team1Seed                       63063
+Team2Seed                       63063
+SeedDiff                        63063
+dtype: int64
+Using 24 features from the model
+Generated 65341 predictions for season 2024
+Generating women's predictions for 2024...
+Generating predictions for W basketball, season 2024
+Found 378 active teams for W basketball in season 2024
+No stats found for season 2024, using season 2010.0 instead
+Warning: Prediction data contains 383913 NaN values
+Columns with NaN values:
+ConfAvgWinPercentageDiff        58996
+ConfAvgPointDifferentialDiff    58996
+RankDiff                        58996
+Team1Seed                       68975
+Team2Seed                       68975
+SeedDiff                        68975
+dtype: int64
+Using 23 features from the model
+Generated 71253 predictions for season 2024
+
+Generating predictions for season 2025...
+Generating men's predictions for 2025...
+Generating predictions for M basketball, season 2025
+Found 364 active teams for M basketball in season 2025
+No stats found for season 2025, using season 2010.0 instead
+Warning: Prediction data contains 314820 NaN values
+Columns with NaN values:
+ConfAvgWinPercentageDiff        58311
+ConfAvgPointDifferentialDiff    58311
+Team1Seed                       66066
+Team2Seed                       66066
+SeedDiff                        66066
+dtype: int64
+Using 24 features from the model
+Generated 66066 predictions for season 2025
+Generating women's predictions for 2025...
+Generating predictions for W basketball, season 2025
+Found 378 active teams for W basketball in season 2025
+No stats found for season 2025, using season 2010.0 instead
+Warning: Prediction data contains 390747 NaN values
+Columns with NaN values:
+ConfAvgWinPercentageDiff        58996
+ConfAvgPointDifferentialDiff    58996
+RankDiff                        58996
+Team1Seed                       71253
+Team2Seed                       71253
+SeedDiff                        71253
+dtype: int64
+Using 23 features from the model
+Generated 71253 predictions for season 2025
+
+Step 5: Formatting and saving submission...
+Sample submission contains 507108 rows
+Final submission contains 507108 predictions (matched to sample submission)
+
+Prediction process complete! Submission file saved as 'submissions/submission.csv'
+Total predictions: 507108
+
+Additional Analysis:
+
+Analyzing model performance by seed matchup (Men's):
+No seed matchup data available for analysis
+
+Analyzing model performance by seed matchup (Women's):
+No seed matchup data available for analysis
+bualimov@Bakhtiyors-MacBook-Pro march-machine-learning-mania-2025 % 
+
+several key issues with this. why does it keep saying no data found for the season 2021, using 2010.0 instead. and it does this for the next 4 up until 2025. could this be because it isnt checking for 2021.0? its doing 2021 insetad of 2021.0? idk, but maybe, because stuff like this: "No stats found for season 2023, using season 2010.0 instead" should not be happening. you have data for everything. fix this issue, it does this with the years from 2021 and onward when checking. make it so it can find the stats for all the seasons. becasue it keeps using 2010.0, i believe the results are faulty, as it keeps repetitively using stats from a previous season, let alone the same one, and its wrong. have it check the proper season's data its analyzing. also, i believe there will be seeding available to give you at a later time? because the official bracket is out already.
+
+because when running the file with cursor, i get these lines at the end: "Additional Analysis:
+
+Analyzing model performance by seed matchup (Men's):
+No seed matchup data available for analysis
+
+Analyzing model performance by seed matchup (Women's):
+No seed matchup data available for analysis". is this because what i gave u has no seeding yet? once you fix the issue with the 2010.0 season repetitvely being checked, implement this into the final product as well:  

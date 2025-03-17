@@ -30,29 +30,60 @@ def prepare_team_stats(dfs, gender='M', start_season=2003, end_season=2024):
     all_detailed_stats = []
     all_rankings = []
     
+    # Get all available seasons in the data
+    available_seasons = set()
+    if 'regular_season' in dfs:
+        available_seasons.update(dfs['regular_season']['Season'].unique())
+    
+    print(f"Processing stats for {gender} basketball, seasons {start_season}-{end_season}")
+    
     for season in range(start_season, end_season + 1):
-        print(f"  Calculating stats for {season} season...")
+        # Convert season to both int and float for comparison
+        season_int = int(season)
+        season_float = float(season)
         
         # Basic stats
-        team_stats = calculate_team_stats(dfs, season)
+        team_stats = calculate_team_stats(dfs, season_int)
         if team_stats is not None and len(team_stats) > 0:
             all_team_stats.append(team_stats)
+        else:
+            # Try with float season
+            team_stats = calculate_team_stats(dfs, season_float)
+            if team_stats is not None and len(team_stats) > 0:
+                all_team_stats.append(team_stats)
         
         # Detailed stats
-        detailed_stats = calculate_detailed_stats(dfs, season)
+        detailed_stats = calculate_detailed_stats(dfs, season_int)
         if detailed_stats is not None and len(detailed_stats) > 0:
             all_detailed_stats.append(detailed_stats)
+        else:
+            # Try with float season
+            detailed_stats = calculate_detailed_stats(dfs, season_float)
+            if detailed_stats is not None and len(detailed_stats) > 0:
+                all_detailed_stats.append(detailed_stats)
         
         # Rankings (only for men's data)
         if gender == 'M' and 'massey_ordinals' in dfs:
-            rankings = get_team_rankings(dfs, season)
+            rankings = get_team_rankings(dfs, season_int)
             if rankings is not None and len(rankings) > 0:
                 all_rankings.append(rankings)
+            else:
+                # Try with float season
+                rankings = get_team_rankings(dfs, season_float)
+                if rankings is not None and len(rankings) > 0:
+                    all_rankings.append(rankings)
     
     # Combine stats from all seasons
     team_stats_df = pd.concat(all_team_stats) if all_team_stats else pd.DataFrame()
     detailed_stats_df = pd.concat(all_detailed_stats) if all_detailed_stats else pd.DataFrame()
     rankings_df = pd.concat(all_rankings) if all_rankings else pd.DataFrame()
+    
+    # Print summary of processed seasons
+    if len(team_stats_df) > 0:
+        processed_seasons = sorted(team_stats_df['Season'].unique())
+        print(f"Processed statistics for {len(processed_seasons)} seasons from {min(processed_seasons)} to {max(processed_seasons)}")
+    else:
+        print("Warning: No team statistics were processed!")
     
     # Merge all stats
     if len(detailed_stats_df) > 0:
@@ -72,11 +103,83 @@ def prepare_team_stats(dfs, gender='M', start_season=2003, end_season=2024):
             how='left'
         )
     
-    # Add conference strength
-    team_stats_df = add_conference_strength(dfs, team_stats_df)
-    
     # Add historical tournament performance
     team_stats_df = add_historical_tournament_performance(dfs, team_stats_df)
+    
+    # Special handling for prediction seasons (2021-2025)
+    # These seasons may have different team conference alignments or missing data
+    if start_season >= 2021:
+        print(f"Adding conference information for prediction seasons ({start_season}-{end_season})")
+        
+        # Get team conferences for all seasons in our prediction range
+        team_conferences = dfs['team_conferences'].copy()
+        pred_conferences = team_conferences[
+            (team_conferences['Season'] >= start_season) & 
+            (team_conferences['Season'] <= end_season)
+        ]
+        
+        # Make sure the DataFrame has the ConfAbbrev column
+        if 'ConfAbbrev' not in team_stats_df.columns:
+            team_stats_df['ConfAbbrev'] = None
+        
+        if len(pred_conferences) > 0:
+            print(f"  Found {len(pred_conferences)} conference entries for seasons {start_season}-{end_season}")
+            
+            # Merge conferences with team stats
+            team_stats_df = pd.merge(
+                team_stats_df,
+                pred_conferences[['Season', 'TeamID', 'ConfAbbrev']],
+                on=['Season', 'TeamID'],
+                how='left',
+                suffixes=('', '_new')
+            )
+            
+            # If we have both columns, use the new one
+            if 'ConfAbbrev_new' in team_stats_df.columns:
+                team_stats_df['ConfAbbrev'] = team_stats_df['ConfAbbrev_new'].fillna(team_stats_df['ConfAbbrev'])
+                team_stats_df = team_stats_df.drop('ConfAbbrev_new', axis=1)
+            
+            # Initialize conference strength columns with default values
+            team_stats_df['ConfAvgWinPercentage'] = 0.5
+            team_stats_df['ConfAvgPointDifferential'] = 0.0
+            
+            # Calculate conference metrics for each season in the prediction range
+            for season in team_stats_df['Season'].unique():
+                season_stats = team_stats_df[team_stats_df['Season'] == season]
+                
+                # Count teams with missing conference info
+                missing_conf = season_stats['ConfAbbrev'].isna().sum()
+                print(f"  Season {season}: {len(season_stats) - missing_conf} teams with conference info, {missing_conf} teams without")
+                
+                # Calculate conference metrics for this season only if we have conference info
+                if len(season_stats) - missing_conf > 0:
+                    conf_strength = season_stats.groupby('ConfAbbrev')[['WinPercentage', 'AvgPointDifferential']].mean().reset_index()
+                    conf_strength = conf_strength.rename(columns={
+                        'WinPercentage': 'ConfAvgWinPercentage',
+                        'AvgPointDifferential': 'ConfAvgPointDifferential'
+                    })
+                    
+                    # Merge conference metrics back with team stats
+                    team_stats_df.loc[team_stats_df['Season'] == season] = pd.merge(
+                        team_stats_df[team_stats_df['Season'] == season],
+                        conf_strength,
+                        on='ConfAbbrev',
+                        how='left'
+                    )
+            
+            # Fill missing conference metrics with defaults
+            team_stats_df['ConfAvgWinPercentage'] = team_stats_df['ConfAvgWinPercentage'].fillna(0.5)
+            team_stats_df['ConfAvgPointDifferential'] = team_stats_df['ConfAvgPointDifferential'].fillna(0.0)
+        else:
+            print(f"  No conference data found for seasons {start_season}-{end_season}, using defaults")
+            team_stats_df['ConfAbbrev'] = None
+            team_stats_df['ConfAvgWinPercentage'] = 0.5  # Default to average
+            team_stats_df['ConfAvgPointDifferential'] = 0.0  # Default to average
+        
+        return team_stats_df
+    
+    # For training seasons, use the original conference strength calculation
+    team_stats_df = add_conference_strength(dfs, team_stats_df)
     
     return team_stats_df
 
@@ -88,7 +191,7 @@ def calculate_team_stats(dfs, season):
     -----------
     dfs : dict
         Dictionary containing loaded dataframes
-    season : int
+    season : int or float
         Season to calculate stats for
     
     Returns:
@@ -98,7 +201,17 @@ def calculate_team_stats(dfs, season):
     """
     # Get regular season results
     reg_season = dfs['regular_season'].copy()
-    reg_season = reg_season[reg_season['Season'] == season]
+    
+    # Handle both int and float season values
+    season_numeric = float(season)
+    reg_season = reg_season[(reg_season['Season'] == season_numeric) | 
+                           (reg_season['Season'] == int(season_numeric))]
+    
+    if len(reg_season) == 0:
+        print(f"    No regular season data found for season {season}")
+        return None
+    
+    print(f"    Found {len(reg_season)} regular season games for season {season}")
     
     # Initialize a dictionary to store team stats
     team_stats = {}
@@ -136,7 +249,7 @@ def calculate_team_stats(dfs, season):
         
         # Store stats in dictionary
         team_stats[team] = {
-            'Season': season,
+            'Season': season_numeric,  # Use the numeric season value
             'TeamID': team,
             'Wins': wins,
             'Losses': losses,
@@ -154,6 +267,8 @@ def calculate_team_stats(dfs, season):
     team_stats_df = pd.DataFrame.from_dict(team_stats, orient='index')
     team_stats_df = team_stats_df.reset_index(drop=True)
     
+    print(f"    Calculated statistics for {len(team_stats_df)} teams in season {season}")
+    
     return team_stats_df
 
 def calculate_detailed_stats(dfs, season):
@@ -164,7 +279,7 @@ def calculate_detailed_stats(dfs, season):
     -----------
     dfs : dict
         Dictionary containing loaded dataframes
-    season : int
+    season : int or float
         Season to calculate stats for
     
     Returns:
@@ -174,11 +289,18 @@ def calculate_detailed_stats(dfs, season):
     """
     # Get detailed regular season results
     detailed_results = dfs['regular_season_detailed'].copy()
-    detailed_results = detailed_results[detailed_results['Season'] == season]
+    
+    # Handle both int and float season values
+    season_numeric = float(season)
+    detailed_results = detailed_results[(detailed_results['Season'] == season_numeric) | 
+                                       (detailed_results['Season'] == int(season_numeric))]
     
     # If no detailed results for this season, return None
     if len(detailed_results) == 0:
+        print(f"    No detailed regular season data found for season {season}")
         return None
+    
+    print(f"    Found {len(detailed_results)} detailed regular season games for season {season}")
     
     # Initialize a dictionary to store team stats
     detailed_stats = {}
@@ -201,7 +323,7 @@ def calculate_detailed_stats(dfs, season):
         
         # Initialize stats dictionary
         stats = {
-            'Season': season,
+            'Season': season_numeric,  # Use the numeric season value
             'TeamID': team,
             'TotalGames': total_games
         }
@@ -267,6 +389,8 @@ def calculate_detailed_stats(dfs, season):
     detailed_stats_df = pd.DataFrame.from_dict(detailed_stats, orient='index')
     detailed_stats_df = detailed_stats_df.reset_index(drop=True)
     
+    print(f"    Calculated detailed statistics for {len(detailed_stats_df)} teams in season {season}")
+    
     return detailed_stats_df
 
 def get_team_rankings(dfs, season, day_num=133):
@@ -277,7 +401,7 @@ def get_team_rankings(dfs, season, day_num=133):
     -----------
     dfs : dict
         Dictionary containing loaded dataframes
-    season : int
+    season : int or float
         Season to get rankings for
     day_num : int
         Day number to get rankings for (default is 133, which is right before the tournament)
@@ -292,11 +416,16 @@ def get_team_rankings(dfs, season, day_num=133):
     
     massey = dfs['massey_ordinals'].copy()
     
-    # Filter for the specified season
-    season_massey = massey[massey['Season'] == season]
+    # Handle both int and float season values
+    season_numeric = float(season)
+    season_massey = massey[(massey['Season'] == season_numeric) | 
+                          (massey['Season'] == int(season_numeric))]
     
     if len(season_massey) == 0:
+        print(f"    No ranking data found for season {season}")
         return None
+    
+    print(f"    Found {len(season_massey)} ranking entries for season {season}")
     
     # Get the closest day to the specified day
     available_days = season_massey['RankingDayNum'].unique()
@@ -310,7 +439,9 @@ def get_team_rankings(dfs, season, day_num=133):
     team_rankings = team_rankings.rename(columns={'OrdinalRank': 'AvgRank'})
     
     # Add season column
-    team_rankings['Season'] = season
+    team_rankings['Season'] = season_numeric
+    
+    print(f"    Calculated rankings for {len(team_rankings)} teams in season {season} (day {closest_day})")
     
     return team_rankings
 
@@ -333,6 +464,19 @@ def add_conference_strength(dfs, team_stats_df):
     # Get team conferences
     team_conferences = dfs['team_conferences'].copy()
     
+    # Check if we have team conferences data
+    if team_conferences.empty:
+        print("Warning: No team conferences data found. Skipping conference strength metrics.")
+        return team_stats_df
+    
+    # Print available seasons in team conferences data
+    conference_seasons = sorted(team_conferences['Season'].unique())
+    print(f"  Available seasons in team conferences data: {conference_seasons}")
+    
+    # Print available seasons in team statistics data
+    stats_seasons = sorted(team_stats_df['Season'].unique())
+    print(f"  Available seasons in team statistics data: {stats_seasons}")
+    
     # Merge team conferences with team stats
     team_stats_with_conf = pd.merge(
         team_stats_df,
@@ -340,6 +484,17 @@ def add_conference_strength(dfs, team_stats_df):
         on=['Season', 'TeamID'],
         how='left'
     )
+    
+    # Print how many teams have conference information
+    missing_conf = team_stats_with_conf['ConfAbbrev'].isna().sum()
+    print(f"  Teams missing conference information: {missing_conf} out of {len(team_stats_with_conf)}")
+    
+    # For each season, show the count of teams with and without conference information
+    for season in stats_seasons:
+        season_stats = team_stats_with_conf[team_stats_with_conf['Season'] == season]
+        missing = season_stats['ConfAbbrev'].isna().sum()
+        total = len(season_stats)
+        print(f"  Season {season}: {total-missing} teams with conference info, {missing} teams without")
     
     # Calculate conference strength for each season
     seasons = team_stats_with_conf['Season'].unique()

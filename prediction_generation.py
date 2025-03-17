@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from feature_engineering import create_matchup_features
 from data_loader import extract_seed_number
+import os
 
 def generate_predictions(model_info, dfs, team_stats_df, gender='M', season=2025):
     """
@@ -54,28 +55,115 @@ def generate_predictions(model_info, dfs, team_stats_df, gender='M', season=2025
     
     print(f"Found {len(active_teams)} active teams for {gender} basketball in season {season}")
     
-    # Filter team stats for the specified season
-    season_stats = team_stats_df[team_stats_df['Season'] == season]
+    # Ensure season is treated as a numeric value for comparison
+    season_numeric = float(season)
+    season_int = int(season)
     
-    # If no stats for the specified season, use the most recent season
-    if len(season_stats) == 0:
-        most_recent_season = team_stats_df['Season'].max()
-        print(f"No stats found for season {season}, using season {most_recent_season} instead")
-        season_stats = team_stats_df[team_stats_df['Season'] == most_recent_season].copy()
-        # Update the season column to the requested season
-        season_stats.loc[:, 'Season'] = season
+    # Get all available seasons in the team stats
+    available_seasons = team_stats_df['Season'].unique()
+    
+    # Debug available seasons and their types
+    print(f"Available seasons in team statistics: {sorted(available_seasons)}")
+    print("Season types in team statistics:")
+    for s in sorted(available_seasons):
+        print(f"  Season {s}: {type(s)}")
+    
+    # Make a copy of team_stats_df and ensure Season is float type for consistent comparison
+    team_stats_float = team_stats_df.copy()
+    team_stats_float['Season'] = team_stats_float['Season'].astype(float)
+    
+    # Try to find the exact season match
+    season_matches = team_stats_float[team_stats_float['Season'] == season_numeric]
+    
+    if len(season_matches) > 0:
+        print(f"Using statistics from season {season} for predictions")
+        season_stats = season_matches.copy()
+    else:
+        # If exact match not found, find the most recent season that's less than or equal to the target season
+        valid_seasons = sorted([float(s) for s in available_seasons if not pd.isna(s) and float(s) <= season_numeric])
+        
+        if valid_seasons:
+            most_recent_season = max(valid_seasons)
+            print(f"No exact match for season {season}, using season {most_recent_season} instead")
+            
+            # Filter team stats for the most recent valid season (using float comparison)
+            season_stats = team_stats_float[team_stats_float['Season'] == float(most_recent_season)].copy()
+            
+            # Update the season column to the requested season
+            season_stats.loc[:, 'Season'] = season_numeric
+        else:
+            print(f"No valid seasons found for {season}, using the earliest available season")
+            valid_seasons = sorted([float(s) for s in available_seasons if not pd.isna(s)])
+            earliest_season = min(valid_seasons)
+            season_stats = team_stats_float[team_stats_float['Season'] == float(earliest_season)].copy()
+            season_stats.loc[:, 'Season'] = season_numeric
+    
+    # Count unique teams in the filtered stats
+    unique_teams = season_stats['TeamID'].nunique()
+    print(f"Using statistics from {unique_teams} teams for predictions")
+    
+    # Count how many active teams have stats
+    active_teams_with_stats = np.intersect1d(active_teams, season_stats['TeamID'].unique())
+    print(f"Found stats for {len(active_teams_with_stats)} out of {len(active_teams)} active teams")
+    
+    # If we found very few teams with stats (e.g., less than 10%), try a more flexible approach
+    if len(active_teams_with_stats) < 0.1 * len(active_teams):
+        print("WARNING: Very few active teams have stats. Trying more flexible matching...")
+        
+        # Try to use the most recent season for each team
+        all_team_stats = []
+        
+        for team_id in active_teams:
+            # Get all stats for this team
+            team_stats = team_stats_float[team_stats_float['TeamID'] == team_id]
+            
+            if len(team_stats) > 0:
+                # Get the most recent season
+                most_recent = team_stats[team_stats['Season'] <= season_numeric]['Season'].max()
+                if pd.isna(most_recent):
+                    # If no seasons before or equal to target, use the earliest available
+                    most_recent = team_stats['Season'].min()
+                
+                # Get stats from most recent season
+                recent_stats = team_stats[team_stats['Season'] == most_recent].copy()
+                recent_stats.loc[:, 'Season'] = season_numeric
+                
+                all_team_stats.append(recent_stats)
+        
+        # Combine all team stats
+        if all_team_stats:
+            season_stats = pd.concat(all_team_stats, ignore_index=True)
+            
+            # Update counts
+            unique_teams = season_stats['TeamID'].nunique()
+            active_teams_with_stats = np.intersect1d(active_teams, season_stats['TeamID'].unique())
+            
+            print(f"After flexible matching: Using statistics from {unique_teams} teams")
+            print(f"After flexible matching: Found stats for {len(active_teams_with_stats)} out of {len(active_teams)} active teams")
     
     # Get tournament seeds if available
     seeds = None
-    if 'tourney_seeds' in dfs and season in dfs['tourney_seeds']['Season'].unique():
-        seeds = dfs['tourney_seeds'][dfs['tourney_seeds']['Season'] == season].copy()
-        seeds['SeedNumber'] = seeds['Seed'].apply(extract_seed_number)
+    if 'tourney_seeds' in dfs:
+        # Try both integer and float versions of the season
+        seeds_data = dfs['tourney_seeds']
+        seeds = seeds_data[(seeds_data['Season'].astype(float) == season_numeric) | 
+                          (seeds_data['Season'] == season_int)].copy()
+        
+        if len(seeds) > 0:
+            print(f"Found {len(seeds)} tournament seeds for season {season}")
+            seeds['SeedNumber'] = seeds['Seed'].apply(extract_seed_number)
+        else:
+            print(f"No tournament seeds found for season {season}")
     
     # Generate all possible matchups
     matchups = []
+    missing_stats_count = 0
+    team_pairs_count = 0
     
     for i, team1_id in enumerate(active_teams):
         for team2_id in active_teams[i+1:]:  # Only consider each pair once
+            team_pairs_count += 1
+            
             # Get stats for both teams
             team1_stats = season_stats[season_stats['TeamID'] == team1_id]
             team2_stats = season_stats[season_stats['TeamID'] == team2_id]
@@ -86,6 +174,8 @@ def generate_predictions(model_info, dfs, team_stats_df, gender='M', season=2025
                 matchup_features = create_matchup_features(team1_stats.iloc[0], team2_stats.iloc[0])
             else:
                 # If we don't have stats for one or both teams, use default features
+                missing_stats_count += 1
+                
                 matchup_features = {}
                 
                 # Add basic default features
@@ -114,7 +204,7 @@ def generate_predictions(model_info, dfs, team_stats_df, gender='M', season=2025
                 matchup_features['RankDiff'] = 0
             
             # Add seed information if available
-            if seeds is not None:
+            if seeds is not None and len(seeds) > 0:
                 team1_seed = seeds[seeds['TeamID'] == team1_id]['SeedNumber'].values
                 team2_seed = seeds[seeds['TeamID'] == team2_id]['SeedNumber'].values
                 
@@ -134,7 +224,7 @@ def generate_predictions(model_info, dfs, team_stats_df, gender='M', season=2025
                 matchup_features['SeedDiff'] = np.nan
             
             # Add season
-            matchup_features['Season'] = season
+            matchup_features['Season'] = season_numeric
             
             # Add team IDs
             matchup_features['Team1ID'] = team1_id
@@ -142,79 +232,103 @@ def generate_predictions(model_info, dfs, team_stats_df, gender='M', season=2025
             
             matchups.append(matchup_features)
     
-    # Convert to DataFrame
-    X_pred = pd.DataFrame(matchups)
+    print(f"Generated {team_pairs_count} team pairs with {missing_stats_count} missing team stats")
     
-    # Check for NaN values
-    if X_pred.isna().any().any():
-        print(f"Warning: Prediction data contains {X_pred.isna().sum().sum()} NaN values")
-        print("Columns with NaN values:")
-        print(X_pred.isna().sum()[X_pred.isna().sum() > 0])
+    # Create a DataFrame from the matchups
+    matchups_df = pd.DataFrame(matchups)
     
-    # Remove non-numeric columns for prediction
-    non_numeric_cols = ['Team1ID', 'Team2ID']
-    X_pred_numeric = X_pred.drop(columns=[col for col in non_numeric_cols if col in X_pred.columns])
-    
-    # Ensure feature order matches training if feature names are available
-    if feature_names is not None:
-        print(f"Using {len(feature_names)} features from the model")
-        
-        # Add missing columns with zeros
-        for col in feature_names:
-            if col not in X_pred_numeric.columns:
-                X_pred_numeric[col] = 0
-        
-        # Reorder columns to match training
-        X_pred_numeric = X_pred_numeric[feature_names]
-    
-    # Make predictions
-    try:
-        y_pred_proba = model.predict_proba(X_pred_numeric)[:, 1]
-    except Exception as e:
-        print(f"Error making predictions: {e}")
-        print("Falling back to default predictions (0.5)")
-        y_pred_proba = np.ones(len(X_pred)) * 0.5
-    
-    # Add predictions to the matchups DataFrame
-    X_pred['Pred'] = y_pred_proba
-    
-    # Create submission format
+    # Prepare predictions DataFrame
     predictions = []
     
-    for _, row in X_pred.iterrows():
+    # Generate ID column for each matchup
+    for _, row in matchups_df.iterrows():
         team1_id = int(row['Team1ID'])
         team2_id = int(row['Team2ID'])
         
-        # Ensure team1_id < team2_id for submission format
-        if team1_id < team2_id:
-            id_str = f"{season}_{team1_id}_{team2_id}"
-            pred = row['Pred']
-        else:
-            id_str = f"{season}_{team2_id}_{team1_id}"
-            pred = 1 - row['Pred']  # Flip the prediction
+        # Create prediction ID in the format "Season_Team1ID_Team2ID"
+        pred_id = f"{int(season)}_{team1_id}_{team2_id}"
         
+        # Make prediction
+        try:
+            # Prepare features for prediction
+            features = row.drop(['Team1ID', 'Team2ID']).to_dict()
+            
+            # Convert to DataFrame
+            features_df = pd.DataFrame([features])
+            
+            # If we have feature names, ensure we're using the same features as during training
+            if feature_names is not None:
+                # Check for missing features
+                missing_features = [f for f in feature_names if f not in features_df.columns]
+                if missing_features:
+                    # Add missing features with default values
+                    for feature in missing_features:
+                        features_df[feature] = 0
+                
+                # Reorder columns to match training feature set
+                features_df = features_df[feature_names]
+            
+            # Make prediction
+            pred = model.predict_proba(features_df)[0][1]
+            
+            # Ensure prediction is within bounds
+            pred = max(0.05, min(0.95, pred))
+        except Exception as e:
+            print(f"Error making prediction for {pred_id}: {e}")
+            # Default to 0.5 if prediction fails
+            pred = 0.5
+        
+        # Add prediction to list
         predictions.append({
-            'ID': id_str,
+            'ID': pred_id,
             'Pred': pred
         })
     
-    # Convert to DataFrame
+    # Create predictions DataFrame
     predictions_df = pd.DataFrame(predictions)
     
-    print(f"Generated {len(predictions_df)} predictions for season {season}")
+    # Generate predictions for the opposite matchups (team2 vs team1)
+    opposite_predictions = []
     
-    return predictions_df
+    for _, row in predictions_df.iterrows():
+        # Parse the ID to get the components
+        id_parts = row['ID'].split('_')
+        season_id = id_parts[0]
+        team1_id = id_parts[1]
+        team2_id = id_parts[2]
+        
+        # Create the opposite matchup ID
+        opposite_id = f"{season_id}_{team2_id}_{team1_id}"
+        
+        # The opposite prediction is 1 - original prediction
+        opposite_pred = 1 - row['Pred']
+        
+        # Add to list
+        opposite_predictions.append({
+            'ID': opposite_id,
+            'Pred': opposite_pred
+        })
+    
+    # Create DataFrame for opposite predictions
+    opposite_predictions_df = pd.DataFrame(opposite_predictions)
+    
+    # Combine original and opposite predictions
+    all_predictions = pd.concat([predictions_df, opposite_predictions_df], ignore_index=True)
+    
+    print(f"Generated {len(all_predictions)} predictions for {gender} basketball, season {season}")
+    
+    return all_predictions
 
 def format_submission(mens_predictions, womens_predictions, sample_submission_path='SampleSubmissionStage1.csv'):
     """
-    Format predictions for submission, ensuring it matches the expected format.
+    Format predictions for submission.
     
     Parameters:
     -----------
     mens_predictions : DataFrame
-        Predictions for men's tournament
+        Predictions for men's basketball
     womens_predictions : DataFrame
-        Predictions for women's tournament
+        Predictions for women's basketball
     sample_submission_path : str
         Path to the sample submission file
     
@@ -223,50 +337,31 @@ def format_submission(mens_predictions, womens_predictions, sample_submission_pa
     DataFrame
         Formatted submission
     """
+    print("Formatting predictions for submission")
+    
     # Combine men's and women's predictions
-    all_predictions = pd.concat([mens_predictions, womens_predictions])
+    all_predictions = pd.concat([mens_predictions, womens_predictions], ignore_index=True)
     
-    # Remove any duplicates
-    all_predictions = all_predictions.drop_duplicates(subset=['ID'])
-    
-    # Sort by ID
-    all_predictions = all_predictions.sort_values('ID')
-    
-    # Ensure predictions are between 0 and 1
-    all_predictions['Pred'] = all_predictions['Pred'].clip(0.001, 0.999)
-    
-    # Check if we need to match the sample submission format
-    try:
+    # Check if we have a sample submission file
+    if os.path.exists(sample_submission_path):
+        print(f"Using sample submission file: {sample_submission_path}")
         sample_submission = pd.read_csv(sample_submission_path)
-        print(f"Sample submission contains {len(sample_submission)} rows")
         
         # Create a dictionary of our predictions for fast lookup
-        pred_dict = dict(zip(all_predictions['ID'], all_predictions['Pred']))
+        prediction_dict = dict(zip(all_predictions['ID'], all_predictions['Pred']))
         
-        # Create a new DataFrame with the same IDs as the sample submission
-        final_predictions = []
+        # Fill in the sample submission with our predictions
+        sample_submission['Pred'] = sample_submission['ID'].apply(
+            lambda x: prediction_dict.get(x, 0.5)  # Default to 0.5 if we don't have a prediction
+        )
         
-        for id_str in sample_submission['ID']:
-            if id_str in pred_dict:
-                pred = pred_dict[id_str]
-            else:
-                # If we don't have a prediction for this ID, use 0.5
-                pred = 0.5
-                print(f"Warning: No prediction for {id_str}, using default (0.5)")
-            
-            final_predictions.append({
-                'ID': id_str,
-                'Pred': pred
-            })
+        print(f"Filled in {len(prediction_dict)} predictions out of {len(sample_submission)} required")
         
-        final_df = pd.DataFrame(final_predictions)
-        print(f"Final submission contains {len(final_df)} predictions (matched to sample submission)")
+        # Return the filled sample submission
+        return sample_submission
+    else:
+        print(f"Warning: Sample submission file not found at {sample_submission_path}")
+        print("Using generated predictions directly")
         
-        return final_df
-        
-    except Exception as e:
-        print(f"Error matching sample submission format: {e}")
-        print("Using our generated predictions instead")
-        
-        print(f"Final submission contains {len(all_predictions)} predictions")
-        return all_predictions 
+        # Return our predictions directly
+        return all_predictions[['ID', 'Pred']] 

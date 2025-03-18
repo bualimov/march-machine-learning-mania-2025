@@ -5,7 +5,6 @@ Notes:
 - how well is model gonna predict how well each team does in the tournament?
   - this will be used to test how good our model is, were we able to predict the winners accurately
 - figure out the proper weights of all variables and metrics in question
-- i do not have the seeding for 2025 yet, we can do that later
 - do not at all every just resort to soing 0.5 for every single team
   - actually do the analsyis with all of the variables i describe
 

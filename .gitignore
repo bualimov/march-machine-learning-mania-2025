@@ -1,3 +1,5 @@
 *.csv
 .DS_Store
 *.zip
+!predictions_M_2025_improved.csv
+!predictions_W_2025_improved.csv

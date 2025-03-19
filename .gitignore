@@ -1,5 +1,7 @@
 *.csv
 *.zip
 !predictions_2025_final_submission.csv
+!MTeams.csv
+!WTeams.csv
 .DS_Store
 notes.txt

@@ -2,3 +2,4 @@
 *.zip
 !predictions_2025_final_submission.csv
 .DS_Store
+notes.txt

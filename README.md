@@ -79,10 +79,11 @@ march-machine-learning-mania-2025/
 │   ├── march_madness_2025_empirical_weights.py       # Historical weight analysis
 │   ├── generate_final_submission.py                  # Creates submission1.csv
 │   ├── generate_optimized_submission.py              # Creates submission2.csv
+│   ├── match_sample_submission.py                    # Creates final submission files
 │   └── other model files                             # Additional model implementations
 ├── submissions/                                      # Submission files
-│   ├── submission1.csv                               # Standard submission
-│   └── submission2.csv                               # Optimized submission
+│   ├── submission1_final.csv                         # Standard submission (final)
+│   └── submission2_final.csv                         # Optimized submission (final)
 └── README.md                                         # This file
 ```
 
@@ -102,29 +103,30 @@ Install required packages using:
 pip install -r requirements.txt
 ```
 
-### Generate Standard Submission (submission1.csv)
+### Generate Standard Submission (submission1_final.csv)
 
 To generate the standard submission with our comprehensive model:
 
 ```bash
 python -m src.generate_final_submission
+python -m src.match_sample_submission
 ```
 
-This script:
-1. Selects exactly 363 active men's teams (excluding MS Valley St)
-2. Maps these to 363 corresponding women's teams 
+This process:
+1. Selects exactly 363 active men's teams
 3. Generates 65,703 matchup predictions for men + 65,703 for women
 4. Creates a CSV with 131,406 predictions + 1 header row (131,407 total)
 
-### Generate Optimized Submission (submission2.csv)
+### Generate Optimized Submission (submission2_final.csv)
 
 To generate the optimized submission with improved Brier score:
 
 ```bash
 python -m src.generate_optimized_submission
+python -m src.match_sample_submission
 ```
 
-This script:
+This process:
 1. Uses the same teams as submission1
 2. Applies tournament history analysis and upset pattern detection
 3. Calibrates probabilities using isotonic regression
@@ -152,13 +154,13 @@ This script:
 
 The submission files are located in the `submissions/` directory:
 
-1. `submission1.csv`: Standard submission using our comprehensive model
+1. `submission1_final.csv`: Standard submission using our comprehensive model
    - 131,407 rows (131,406 predictions + header)
    - Mean probability: 0.500
    - Standard deviation: 0.199
-   - Balanced distribution 
+   - Balanced distribution
 
-2. `submission2.csv`: Optimized submission with improved Brier score
+2. `submission2_final.csv`: Optimized submission with improved Brier score
    - 131,407 rows (131,406 predictions + header)
    - Mean probability: 0.566
    - Standard deviation: 0.165

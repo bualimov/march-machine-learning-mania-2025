@@ -77,8 +77,8 @@ march-machine-learning-mania-2025/
 ├── src/                                              # Source code
 │   ├── march_madness_2025_comprehensive_model.py     # Main prediction model
 │   ├── march_madness_2025_empirical_weights.py       # Historical weight analysis
-│   ├── generate_final_submission.py                  # Creates standard submission
-│   ├── generate_optimized_submission.py              # Creates optimized submission
+│   ├── generate_final_submission.py                  # Creates submission1.csv
+│   ├── generate_optimized_submission.py              # Creates submission2.csv
 │   └── other model files                             # Additional model implementations
 ├── submissions/                                      # Submission files
 │   ├── submission1.csv                               # Standard submission

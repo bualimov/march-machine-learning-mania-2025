@@ -1,28 +1,49 @@
-Also to do:
-- play with datatbase, have it build a model to test
+Notes:
 - look at how model did based on 2024 predictions
+- we should determine which values are more worthy for prediction (weight)
+  - ex. point diff over the year is more important to deternmine performance over other variables
+- how well is model gonna predict how well each team does in the tournament?
+  - this will be used to test how good our model is, were we able to predict the winners accurately
+- figure out the proper weights of all variables and metrics in question
+- do not at all every just resort to soing 0.5 for every single team
+  - actually do the analsyis with all of the variables i describe
 
-- big dataset to train the model, portion to test it (Machine learning)
-    - (will it be trained on the reg season, tourney in test?. like split in half?)
-    - or will part of tourney be bart of test
-- it will determine which values are more worthy for prediction (weight)
-    - ex. point diff over the year is more important to deternmine performance
+Questions:
+- big dataset to train the model, which portion will be used to test it (Machine learning)
+  - (will it be trained on the reg season, or previous tournaments for testing? like split in half maybe?)
+  - or only exclusively train by looking at past tournaments, and then comparing the actual results?
 - use data from prev years, use data from tourney to determine how well model is actually behaving
-- how well is model gonna predict how well each team does in the tournament
-    - this will be used to test how good our model is, were we able to predict the winners accurately
-- how good is relative team performance, like UConn has been good for years, vs. random teams that just show up
-- 70% of the time, the favorites win
-- test 1 v 16, 2 v15, in my head the numbers should go down as you get closer
+
+- how good is relative team performance, like UConn has been good for years, vs. random teams that just show up?
+  - look into how maybe, 70% of the time, the favorites win, and how much is THAT gonna matter
+- test 1 v 16, 2 v 15, (seeding-wise) in my head the numbers should go down as you get closer
 
 Variables to check:
-- check to see if weight needed for players that have been w/ team longer
-- try to find point diff?
-- diff buckets
-    - how does team do statistically
+- check to see players that have been w/ team longer, if they are with the team longer, 
+  - does a more experienced team -> more success? if yes, hold the weight high, otherwise not
+- try to find team's statistical details like:
+  - point differential throughout the season?
+  - lets say a team finishes with a +200 points total and is in the tournamnet.
+  - and their opponent has a -150 points differntial and is in the tournament. does it matter?
+  - determine head to head mathcups too, if they played each other recent years, trends, one team usually wins or no? if so, take that into account?
+- organize this stuff into different buckets, each holding respected different weights. for example:
+  - stats would hold .2 weight. rankings hold .25 weight. coach success rates hold .1 weight. all of this would be used to create the probability, from 0 to 1, that a team would win.
+    - how does team do statistically throughout the season
     - strength of schedule/conference
     - coach success rates
     - AP + other rankings (net), how important are those
-        - 192 types of rankings, do they play a part
-    - tournament seeding, does that play a role
+        - 192 types of rankings, do they play a part at all
+    - tournament seeding, does that play a role 
+    - recency 
 
-
+General targeted approach:
+- read in all data and understand it. all of the csv files, get an understanding for the data.
+  - the teams (both mens and womens)
+  - the way data is being stored (in some situations, years are stored as floats vs ints for some reason)
+  - what the data means, (i will paste in guidelines for data definitions)
+  - conferences, stats for the teams, cities, submission samples, team id's all of this info is important
+  - tournament seeding, how it works, how many teams make it
+- after reading in data, read in all of the directions and guidelines.
+- read in this entire notes file, get an indepth understanding of what the project submission needs to look like, and my thoughts and notes
+- be detailed in explaining everything, work towards a solution, EXPLAIN EVERYTHING IN DETAIL
+- take in all of the variables and metrics i discussed.

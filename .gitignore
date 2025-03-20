@@ -1,2 +1,9 @@
 *.csv
+*.zip
+!submission1.csv
+!submission2.csv
+!submission3.csv
+!MTeams.csv
+!WTeams.csv
 .DS_Store
+notes.txt
